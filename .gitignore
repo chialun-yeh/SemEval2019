@@ -6,6 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
+# data
+*.xml
+lexicons/*
+generated_features/*
+.pylintrc
+
 # Distribution / packaging
 .Python
 build/
@@ -93,6 +99,7 @@ venv.bak/
 # Spyder project settings
 .spyderproject
 .spyproject
+.vscode
 
 # Rope project settings
 .ropeproject
