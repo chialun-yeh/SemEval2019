@@ -3,43 +3,54 @@ import re
 import xml.sax
 import lxml.sax
 import lxml.etree
-from nltk import word_tokenize, pos_tag
-from lexicon_featurizer import *
+from text_featurizer import *
 
+def processTitle(title):
+    # CNN to process title
+    # Use sentiment analysis for the title (extract NE, see the sentiment of the NE on Wiki)
+    
+    named_entities = find_NE(title)
+    ne_num = len(named_entities)
+    return [ne_num]
 
-
-
-groundTruth = {}
-class GroundTruthHandler(xml.sax.ContentHandler):
-    def __init__(self):
-        xml.sax.ContentHandler.__init__(self)
-
-    def startElement(self, name, attrs):
-        if name == "article":
-            articleId = attrs.getValue("id")
-            hyperpartisan = attrs.getValue("hyperpartisan")
-            groundTruth[articleId] = hyperpartisan
 
 def handleArticleNLP(article, outFile):
     title = article.get('title')
+    title_tokens = nltk.word_tokenize(title)
+    title_words = [t.lower() for t in title_tokens if t not in string.punctuation]
+    if len(title_words ) == 0:
+        print(article.get('id'))
+        title_sent = [0,0,0,0,0,0]
+        title_bias = 0
+        title_ner = 0
+    else:
+        title_sent = sentiment(title_words)
+        title_bias = bias_lexicon(title_words)
+        title_ner = len(find_NE(title))
+    title_feats = [title_bias, title_ner]
+
     # get text from article
     text = lxml.etree.tostring(article, method="text").decode('utf-8')
-    text_cleaned = re.sub('^[a-z]', '', text.lower())
-    tokens = word_tokenize(text)
-    tokens_cleaned = word_tokenize(text_cleaned)
-    pos_tags = pos_tag(tokens)
+    sentences = nltk.sent_tokenize(text)
+
+    pos_tags = nltk.pos_tag(nltk.word_tokenize(text))
+    tokens = nltk.word_tokenize(text)
+    words = [t.lower() for t in tokens if t not in string.punctuation]
     
-    text_feats = extract_text_features(text, tokens_cleaned)    
+    quotation = len(re.findall('"', text))
+    title_feats = processTitle(title)
+    text_feats = extract_text_features(sentences, words)    
     pos_feats = extract_pos_features(pos_tags)
-    bias_feat = bias_lexicon(tokens_cleaned)
+    bias_feat = bias_lexicon(words)
     sub_feat = subjective_lexicon(pos_tags)
-    features = [text_feats, pos_feats, bias_feat, sub_feat]
+    sent_feats = sentiment(words)
+    ner_feats = [len(find_NE(text))]
+    features = [title_feats, title_sent, text_feats, pos_feats, bias_feat, sub_feat, sent_feats, ner_feats, [quotation]]
     flattened = [val for sublist in features for val in sublist]
 
     outFile.write(article.get("id"))
     for f in flattened:
         outFile.write(" " + str(f))
-    outFile.write(' ' + groundTruth[article.get("id")])
     outFile.write("\n")   
 
 
@@ -65,23 +76,7 @@ class Featurizer(xml.sax.ContentHandler):
             self.lxmlhandler.endElement(name)
             if name == "article":
                 # pass to handleArticle function
-                if self.cnt % 500 == 0:
+                if self.cnt % 1 == 0:
                     handleArticleNLP(self.lxmlhandler.etree.getroot(), self.outFile)
                 self.lxmlhandler = "undefined"
-                self.cnt = self.cnt+1
-                
-
-                           
-if __name__ == '__main__':
-
-    # Parse groundTruth
-    train_label = "C:/Users/sharo/Documents/SemEval2019/data/ground-truth-training-20180831.xml/yTrn.xml"
-    with open(train_label) as groundTruthDataFile:
-        xml.sax.parse(groundTruthDataFile, GroundTruthHandler())
-
-
-    trainFile = "C:/Users/sharo/Documents/SemEval2019/data/articles-training-20180831.xml/xTrn.xml"
-    outputFile = 'trn_feat.txt'
-    with open(outputFile, 'w') as outFile:
-        with open(trainFile) as inputFile:
-            xml.sax.parse(inputFile, Featurizer(outFile))
+                self.cnt = self.cnt+1         

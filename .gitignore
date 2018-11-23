@@ -9,7 +9,9 @@ __pycache__/
 # data
 *.xml
 lexicons/*
-generated_features/*
+features/*
+models/*
+predictions.*
 .pylintrc
 
 # Distribution / packaging
