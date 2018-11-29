@@ -2,7 +2,10 @@ import os
 import xml.sax
 import numpy as np
 from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 from myFeaturizer import Featurizer
+from bow import *
+from scipy.sparse import hstack
 import pickle
 
 
@@ -30,30 +33,71 @@ def parseFeatures(filename, filepath = './features'):
     X = np.asarray(feats).astype(float)
     return ids, X
 
-if __name__ == '__main__':
-    name = 'sampleTrn'
-    data_path = './data/articles-training-.xml/'
-    feature_path = './features/'
-    label_path = './data/ground-truth-training-20180831.xml/'
+def train_model(X, Y, model):
+    model_path = './models/'
+    if model == 'lr':
+        model = LogisticRegression()
+        model_name = 'logisticRegression.sav'
 
-    with open(os.path.join(feature_path, name) + '.txt', 'w') as outFile:
-        with open(os.path.join(data_path, name) + '.xml') as inputFile:
-            xml.sax.parse(inputFile, Featurizer(outFile))
+    elif model == 'rf':
+        model = RandomForestClassifier()
+        model_name = 'randomForest.sav'
+    model.fit(X, Y)
+    pickle.dump(model, open(os.path.join(model_path, model_name),'wb'))
+
+if __name__ == '__main__':
+    use_features = False
+    test = False
+    if test:
+        name = 'sample'
+        trainFile = 'data/sampleArticle_trn.xml'
+        labelFile = 'data/ground_trn.xml'
+        allDocs = ['features/test_doc.txt']
+    else:
+        name = 'trn'
+        trainFile = 'data/articles-training-bypublisher.xml'
+        labelFile = 'data/ground-truth-training-bypublisher.xml'
+        allDocs = ['features/train_doc.txt', 'features/val_doc.txt']
 
     # parse groundTruth
-    with open(os.path.join(label_path, name) + '.xml') as groundTruthDataFile:
+    with open(labelFile) as groundTruthDataFile:
         xml.sax.parse(groundTruthDataFile, GroundTruthHandler())
 
-    # parse features
-    ids, X = parseFeatures('trn_feat.txt')
-    Y = []
+    # extract doc representation 
+    dimension = 50000
+    dic = createDict(allDocs, dimension)
+    X_rep = extract_doc_rep(allDocs[0], dic, dimension, 'bow')
+
+
+    if use_features:
+        feature_path = './features/'
+        # extract and write features to ./features/
+        with open(os.path.join(feature_path, name) + '.txt', 'w') as outFile:
+            with open(trainFile, encoding='utf-8') as inputFile:
+                parser = xml.sax.make_parser()
+                parser.setContentHandler(Featurizer(outFile))
+                source = xml.sax.xmlreader.InputSource()
+                source.setByteStream(inputFile)
+                source.setEncoding('utf-8')
+                parser.parse(source)
+        # parse features
+        ids, feats = parseFeatures(name + '.txt')
+        X_trn = hstack(X_rep.transpose(), feats)
+
+    else:
+        X_trn = X_rep.transpose()
+        ids = [line.split(',')[0] for line in open(allDocs[0])]
+    
+    # build label for training
+    Y_trn = []
     for id in ids:
-        Y.append(groundTruth[id])
+        Y_trn.append(groundTruth[id])
 
     # train model
-    model = LogisticRegression()
-    model.fit(X, Y)
-    model_path = './models/'
-    model_name = 'lr.sav'
-    pickle.dump(model, open(os.path.join(model_path, model_name),'wb'))
+    train_model(X_trn, Y_trn, 'lr')
+
+    # predict
+    #run_evaluation(test, use_features)
+
+    
 

@@ -12,6 +12,7 @@ def processTitle(title):
     named_entities = find_NE(title)
     ne_num = len(named_entities)
     return [ne_num]
+    
 
 
 def handleArticleNLP(article, outFile):
@@ -30,7 +31,7 @@ def handleArticleNLP(article, outFile):
     title_feats = [title_bias, title_ner]
 
     # get text from article
-    text = lxml.etree.tostring(article, method="text").decode('utf-8')
+    text = lxml.etree.tostring(article, method="text", encoding='unicode')
     sentences = nltk.sent_tokenize(text)
 
     pos_tags = nltk.pos_tag(nltk.word_tokenize(text))
@@ -48,9 +49,9 @@ def handleArticleNLP(article, outFile):
     features = [title_feats, title_sent, text_feats, pos_feats, bias_feat, sub_feat, sent_feats, ner_feats, [quotation]]
     flattened = [val for sublist in features for val in sublist]
 
-    outFile.write(article.get("id"))
+    outFile.write(article.get("id") + ' ')
     for f in flattened:
-        outFile.write(" " + str(f))
+        outFile.write(' ' + str(f))
     outFile.write("\n")   
 
 

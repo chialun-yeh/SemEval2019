@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """Term frequency extractor for the PAN19 hyperpartisan news detection task"""
-# Version: 2018-10-09
+# Version: 2018-11-23
 
 # Parameters:
 # --inputDataset=<directory>
@@ -20,36 +20,84 @@ import xml.sax
 import lxml.sax
 import lxml.etree
 import re
-from collections import Counter
-from nltk.corpus import stopwords
+
+'''
+
+########## OPTIONS HANDLING ##########
+def parse_options():
+    """Parses the command line options."""
+    try:
+        long_options = ["inputDataset=", "outputFile="]
+        opts, _ = getopt.getopt(sys.argv[1:], "d:o:", long_options)
+    except getopt.GetoptError as err:
+        print(str(err))
+        sys.exit(2)
+
+    inputDataset = "undefined"
+    outputFile = "undefined"
+
+    for opt, arg in opts:
+        if opt in ("-d", "--inputDataset"):
+            inputDataset = arg
+        elif opt in ("-o", "--outputFile"):
+            outputFile = arg
+        else:
+            assert False, "Unknown option."
+    if inputDataset == "undefined":
+        sys.exit("Input dataset, the directory that contains the articles XML file, is undefined. Use option -d or --inputDataset.")
+    elif not os.path.exists(inputDataset):
+        sys.exit("The input dataset folder does not exist (%s)." % inputDataset)
+
+    if outputFile == "undefined":
+        sys.exit("Output file, the file to which the vectors should be written, is undefined. Use option -o or --outputFile.")
+
+    return (inputDataset, outputFile)'''
 
 
-termfrequencies = {}
+
 ########## ARTICLE HANDLING ##########
-def handleArticle(article):
+def handleArticle(article, outFile):
+    termfrequencies = {}
+
     # get text from article
-    text = lxml.etree.tostring(article, method="text").decode('utf-8')
-    textcleaned = re.sub('[^a-z ]', '', text.lower())
-    tokens = [t for t in textcleaned.split() if t not in stopwords.words('english')]
+    text = lxml.etree.tostring(article, method="text", encoding="unicode")
+    remove = re.sub('\([a-z]*\)|(\#\S+)', '', text.lower())
+    remove_url = re.sub('(www\S+)|(http\S+)|(href)|(\S+.com)', '', remove)
+    textcleaned = re.sub('[^a-z ]', '', remove_url)
+    textcleaned = re.sub('(^ *) | ( *$)', '', textcleaned)
+    textcleaned = re.sub('(  +)', ' ', textcleaned)
+    outFile.write(article.get("id") + ',')
+    outFile.write(textcleaned)
+    outFile.write("\n")
+
+'''
     # counting tokens
-    for token in tokens:
+    for token in textcleaned.split():
         if token in termfrequencies:
             termfrequencies[token] += 1
         else:
             termfrequencies[token] = 1
 
+    # writing counts: <article id> <token>:<count> <token>:<count> ...
+    outFile.write(article.get("id"))
+    for token, count in termfrequencies.items():
+        outFile.write(" " + str(token) + ":" + str(count))
+    outFile.write("\n")'''
+
+
 
 ########## SAX FOR STREAM PARSING ##########
-class TFExtractor(xml.sax.ContentHandler):
-    def __init__(self):
+class HyperpartisanNewsTFExtractor(xml.sax.ContentHandler):
+    def __init__(self, outFile):
         xml.sax.ContentHandler.__init__(self)
+        self.outFile = outFile
         self.lxmlhandler = "undefined"
-        self.cnt = 0
 
     def startElement(self, name, attrs):
         if name != "articles":
             if name == "article":
                 self.lxmlhandler = lxml.sax.ElementTreeContentHandler()
+
             self.lxmlhandler.startElement(name, attrs)
 
     def characters(self, data):
@@ -60,24 +108,24 @@ class TFExtractor(xml.sax.ContentHandler):
         if self.lxmlhandler != "undefined":
             self.lxmlhandler.endElement(name)
             if name == "article":
-                if self.cnt % 10 == 0:
                 # pass to handleArticle function
-                    handleArticle(self.lxmlhandler.etree.getroot())
+                handleArticle(self.lxmlhandler.etree.getroot(), self.outFile)
                 self.lxmlhandler = "undefined"
-                self.cnt = self.cnt+1
+            
 
-
-    
 
 if __name__ == '__main__':
 
-    trainFile = "C:/Users/sharo/Documents/SemEval2019/data/articles-training-20180831.xml/xTrn.xml"
-    outputFile = 'term_frequency.txt'
-    with open(trainFile) as inputRunFile:
-        xml.sax.parse(inputRunFile, TFExtractor())
-
-    c = Counter(termfrequencies)
+    outputFile = 'features/test_doc.txt'
+    inputDataset = ['data/articles-training-byarticle.xml']
     with open(outputFile, 'w') as outFile:
-        for token, count in c.most_common(50000):
-            outFile.write(str(token) + ' ' + str(count) + '\n')
+        for file in inputDataset:
+            if file.endswith(".xml"):
+                with open(file, 'r', encoding='utf-8') as inputRunFile:
+                    parser = xml.sax.make_parser()
+                    parser.setContentHandler(HyperpartisanNewsTFExtractor(outFile))
+                    source = xml.sax.xmlreader.InputSource()
+                    source.setByteStream(inputRunFile)
+                    source.setEncoding("utf-8")
+                    parser.parse(source)
 

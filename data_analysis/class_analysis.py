@@ -24,11 +24,12 @@ class GroundTruthHandler(xml.sax.ContentHandler):
             else:
                 binary[b] = 0
 
-            bia = attrs.getValue("bias")
-            if bia in bias.keys():
-                bias[bia] = bias[bia] + 1
-            else:
-                bias[bia] = 0
+            if 'bias' in attrs:
+                bia = attrs.getValue("bias")
+                if bia in bias.keys():
+                    bias[bia] = bias[bia] + 1
+                else:
+                    bias[bia] = 0
 
             s = attrs.getValue("labeled-by")
             if s in label.keys():
@@ -38,12 +39,24 @@ class GroundTruthHandler(xml.sax.ContentHandler):
 
 
 if __name__ == '__main__':
-    yTrn = "C:/Users/sharo/Documents/SemEval2019/data/ground-truth-training-20180831.xml/yTrn.xml"
-    yVal = "C:/Users/sharo/Documents/SemEval2019/data/ground-truth-validation-20180831.xml/yVal.xml"
+    yTst = "data/ground-truth-training-byarticle.xml"
+    yTrn = "data/ground-truth-training-bypublisher.xml"
+    yVal = "data/ground-truth-validation-bypublisher.xml"
+    with open(yTrn) as groundTruthDataFile:
+        xml.sax.parse(groundTruthDataFile, GroundTruthHandler())
+        print(binary)
+        print(bias)
+        binary = {}
+        bias = {}
     with open(yVal) as groundTruthDataFile:
         xml.sax.parse(groundTruthDataFile, GroundTruthHandler())
+        print(binary)
+        print(bias)
+        binary = {}
+        bias = {}
+    with open(yTst) as groundTruthDataFile:
+        xml.sax.parse(groundTruthDataFile, GroundTruthHandler())
+        print(binary)
 
-    print(binary)
-    print(bias)
-    print(label)
+    
 

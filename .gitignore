@@ -8,10 +8,13 @@ __pycache__/
 
 # data
 *.xml
+*.pdf
 lexicons/*
 features/*
 models/*
-predictions.*
+predictions/*
+tmp/*
+exp/*
 .pylintrc
 
 # Distribution / packaging
