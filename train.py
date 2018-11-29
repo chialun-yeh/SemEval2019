@@ -1,13 +1,12 @@
 import os
+import pickle
 import xml.sax
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from myFeaturizer import Featurizer
-from bow import *
+from doc_representation import *
 from scipy.sparse import hstack
-import pickle
-
 
 
 groundTruth = {}
@@ -42,12 +41,13 @@ def train_model(X, Y, model):
     elif model == 'rf':
         model = RandomForestClassifier()
         model_name = 'randomForest.sav'
+    print('training model')
     model.fit(X, Y)
     pickle.dump(model, open(os.path.join(model_path, model_name),'wb'))
 
 if __name__ == '__main__':
     use_features = False
-    test = False
+    test = True
     if test:
         name = 'sample'
         trainFile = 'data/sampleArticle_trn.xml'
@@ -64,9 +64,8 @@ if __name__ == '__main__':
         xml.sax.parse(groundTruthDataFile, GroundTruthHandler())
 
     # extract doc representation 
-    dimension = 50000
-    dic = createDict(allDocs, dimension)
-    X_rep = extract_doc_rep(allDocs[0], dic, dimension, 'bow')
+    dic = createDict(allDocs)
+    X_rep = extract_doc_rep(allDocs[0], dic, 'bow', name='trn_rep')
 
 
     if use_features:
@@ -95,9 +94,6 @@ if __name__ == '__main__':
 
     # train model
     train_model(X_trn, Y_trn, 'lr')
-
-    # predict
-    #run_evaluation(test, use_features)
 
     
 

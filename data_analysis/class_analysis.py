@@ -1,12 +1,7 @@
 #!/usr/bin/env python
 
 from __future__ import division
-import json
-import os
-import sys
 import xml.sax
-
-########## SAX ##########
 
 binary = {}
 bias = {}

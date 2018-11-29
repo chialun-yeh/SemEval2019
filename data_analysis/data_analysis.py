@@ -5,7 +5,6 @@ import lxml.sax
 import lxml.etree
 import nltk
 import numpy as np
-from lexicon_featurizer import *
 from text_featurizer import *
 import matplotlib.pyplot as plt
 from scipy import stats

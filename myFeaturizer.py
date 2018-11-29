@@ -8,11 +8,10 @@ from text_featurizer import *
 def processTitle(title):
     # CNN to process title
     # Use sentiment analysis for the title (extract NE, see the sentiment of the NE on Wiki)
-    
     named_entities = find_NE(title)
     ne_num = len(named_entities)
     return [ne_num]
-    
+
 
 
 def handleArticleNLP(article, outFile):

@@ -1,14 +1,16 @@
 import os
-import xml.sax
-import lxml.sax
-import lxml.etree
-from text_featurizer import *
-from myFeaturizer import Featurizer
 import pickle
-from train_model import parseFeatures
-from bow import *
+import xml.sax
+from myFeaturizer import Featurizer
+from train import parseFeatures
+from scipy.sparse import hstack
+from doc_representation import *
 
-def run_prediction(test, use_features, dimension):
+if __name__ == "__main__":
+    
+    test = False
+    use_features = False
+
     if test:
         name = 'sample_val'
         valFile = 'data/sampleArticle_val.xml'
@@ -18,9 +20,11 @@ def run_prediction(test, use_features, dimension):
         valFile = 'data/articles-validation-bypublisher.xml'
         labelFile = 'data/ground-truth-validation-bypublisher.xml'
 
+    valDoc = 'features/val_doc.txt'
+
     # doc representation
     dic = corpora.Dictionary.load('tmp/dictionary.dict')  
-    X_rep = extract_doc_rep(valFile, dic, dimension, 'bow')
+    X_rep = extract_doc_rep(valDoc, dic, 'bow', name='val_rep')
 
     if use_features:
         feature_path = './features/'
@@ -35,15 +39,14 @@ def run_prediction(test, use_features, dimension):
                 parser.parse(source)
 
         ids, feats = parseFeatures(name + '.txt')
-        X_val = np.hstack(np.transposr(X_rep), feats)
+        X_val = hstack(X_rep.transpose(), feats)
 
     else:
-        ids = [line.split(',')[0] for line in open(allDocs)]
-        X_val = np.transpose(X_rep)
+        ids = [line.split(',')[0] for line in open(valDoc)]
+        X_val = X_rep.transpose()
         
-
     # predict 
-    model_name = './models/lr.sav'
+    model_name = './models/LogisticRegression.sav'
     model = pickle.load(open(model_name, 'rb'))
     preds = model.predict(X_val)
 
