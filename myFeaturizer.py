@@ -12,6 +12,17 @@ def processTitle(title):
     ne_num = len(named_entities)
     return [ne_num]
 
+def parseFeatures(filename, filepath = './features'):
+    ids = []
+    feats = []
+    with open(os.path.join(filepath, filename)) as feat:
+        lines = feat.readlines()
+        for line in lines:
+            tmp = line.split()
+            ids.append(tmp[0])
+            feats.append(tmp[1:])
+    X = np.asarray(feats).astype(float)
+    return ids, X
 
 
 def handleArticleNLP(article, outFile):

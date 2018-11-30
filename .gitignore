@@ -9,7 +9,6 @@ __pycache__/
 # data
 *.xml
 *.pdf
-lexicons/*
 features/*
 models/*
 predictions/*

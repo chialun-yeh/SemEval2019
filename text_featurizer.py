@@ -1,10 +1,6 @@
-import string
 import nltk
-import collections
 import numpy as np
 import os
-
-
 
 def find_NE(text = ''):
     nes = []
@@ -90,7 +86,7 @@ def load_sentiment(filepath = 'lexicons/'):
             line = l.split()
             if line[0] == "type=weaksubj":
                 if line[-1] == "priorpolarity=negative":
-                        wneg.add(line[2].split("=")[1])
+                    wneg.add(line[2].split("=")[1])
                 elif line[-1] == "priorpolarity=positive":
                     wpos.add(line[2].split("=")[1])
                 elif line[-1] == "priorpolarity=neutral":
@@ -104,7 +100,7 @@ def load_sentiment(filepath = 'lexicons/'):
                 elif line[-1] == "priorpolarity=positive":
                     spos.add(line[2].split("=")[1])
                 elif line[-1] == "priorpolarity=neutral":
-                        sneu.add(line[2].split("=")[1])
+                    sneu.add(line[2].split("=")[1])
                     #elif line[-1] == "priorpolarity=both":
                         #spos.add(line[2].split("=")[1])
                         #sneg.add(line[2].split("=")[1])
