@@ -1,14 +1,67 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
+import sys
 import os
+import getopt
 import pickle
 import xml.sax
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from myFeaturizer import Featurizer, parseFeatures
 from doc_representation import buildRep, extract_doc_rep
+from handleXML import createDocuments
 from scipy.sparse import hstack
+
+
+########## OPTIONS HANDLING ##########
+def parse_options():
+    """Parses the command line options."""
+    try:
+        long_options = ["inputFile=", "labelFile=", "outputPath=", "documentRep=", "model="]
+        opts, _ = getopt.getopt(sys.argv[1:], "i:l:o:d:m:", long_options)
+    except getopt.GetoptError as err:
+        print(str(err))
+        sys.exit(2)
+
+    inputFile = "undefined"
+    labelFile = "undefined"
+    outputPath = "undefined"
+    rep = 'bow'
+    model = 'lr'
+    
+    for opt, arg in opts:
+        if opt in ("-i", "--inputFile"):
+            inputFile = arg
+        elif opt in ("-l", "--labelFile"):
+            labelFile = arg
+        elif opt in ("-o", "--outputPath"):
+            outputPath = arg
+        elif opt in ("-d", "--documentRep"):
+            rep = arg
+        elif opt in ("-m", "--model"):
+            model = arg
+        else:
+            assert False, "Unknown option."
+    if inputFile == "undefined":
+        sys.exit("The input XML file of aritcles, is undefined. Use option -i or --inputFile.")
+    elif not os.path.exists(inputFile):
+        sys.exit("The input file does not exist (%s)." % inputFile)
+
+    if labelFile == "undefined":
+        sys.exit("The label XML file is undefined. Use option -l or --labelFile.")
+    elif not os.path.exists(inputFile):
+        sys.exit("The label file does not exist (%s)." % labelFile)
+
+    if outputPath == "undefined":
+        sys.exit("The output path where the model should be saved, is undefined. Use option -o or --outputFile.")
+    elif not os.path.exists(outputPath):
+        os.mkdir(outputPath)
+
+    if rep not in ['bow', 'tfidf', 'doc2vec']:
+        sys.exit("The supported document representations are BOW, TFIDF, or Doc2Vec")
+
+    if model not in ['lr', 'rf']:
+        sys.exit('The supported models are logistic regression (lr) or random forest (rf)')
+
+    return (inputFile, labelFile, outputPath, rep, model)
 
 
 groundTruth = {}
@@ -25,8 +78,7 @@ class GroundTruthHandler(xml.sax.ContentHandler):
             hyperpartisan = attrs.getValue("hyperpartisan")
             groundTruth[articleId] = hyperpartisan
 
-def train_model(X, Y, model):
-    model_path = './models/'
+def train_model(X, Y, model, outputPath):
     if model == 'lr':
         model = LogisticRegression()
         model_name = 'logisticRegression.sav'
@@ -36,38 +88,37 @@ def train_model(X, Y, model):
         model_name = 'randomForest.sav'
     print('training model')
     model.fit(X, Y)
-    pickle.dump(model, open(os.path.join(model_path, model_name),'wb'))
+    pickle.dump(model, open(os.path.join(outputPath, model_name),'wb'))
 
-if __name__ == '__main__':
+def main(inputFile, labelFile, outputPath, rep, model):  
+    """Main method of this module."""
+
     use_features = False
-    test = False
-    if test:
-        run_name = 'sample'
-        trainFile = 'sample_data/articles-training-bypublisher.xml'
-        labelFile = 'data/ground-truth-training-bypublisher.xml'
-        doc4Dict = ['features/sample-trn.txt', 'features/sample-val.txt']
-    else:
-        run_name = 'trn'
-        trainFile = 'data/articles-training-bypublisher.xml'
-        labelFile = 'data/ground-truth-training-bypublisher.xml'
-        doc4Dict = ['features/train_doc.txt', 'features/val_doc.txt']
-
     # parse groundTruth
     with open(labelFile) as groundTruthDataFile:
         xml.sax.parse(groundTruthDataFile, GroundTruthHandler())
+    
+    # build document representation model
+    if not os.path.exists(inputFile.strip('.xml') + '.txt'):
+        createDocuments(inputFile)
+    else:
+        print('loading documents')
+        # also create for validation?
+    docs = inputFile.strip('.xml') + '.txt'
+    if rep == 'bow' or rep == 'tfidf':
+        dim = 50000
+    else:
+        dim = 300
 
-    # build representation model
-    rep = 'tfidf'
-    dim = 50000
-    buildRep(doc4Dict, rep, dim, test)
-    # extract doc representation 
-    X_rep = extract_doc_rep(doc4Dict[0], rep, name='trn_rep', sample=test)
+    buildRep(docs, rep, dim)
+    # extract doc representation for training set
+    X_rep = extract_doc_rep(docs, rep, name='trn_rep')
 
     if use_features:
         feature_path = './features/'
         # extract and write features to ./features/
-        with open(os.path.join(feature_path, run_name) + '.txt', 'w') as outFile:
-            with open(trainFile, encoding='utf-8') as inputFile:
+        with open(os.path.join(feature_path, inputFile.strip('.xml')) + '.txt', 'w') as outFile:
+            with open(inputFile, encoding='utf-8') as inputFile:
                 parser = xml.sax.make_parser()
                 parser.setContentHandler(Featurizer(outFile))
                 source = xml.sax.xmlreader.InputSource()
@@ -75,12 +126,12 @@ if __name__ == '__main__':
                 source.setEncoding('utf-8')
                 parser.parse(source)
         # parse features
-        ids, feats = parseFeatures(run_name + '.txt')
+        ids, feats = parseFeatures(os.path.join(feature_path, inputFile.strip('.xml')) + '.txt')
         X_trn = hstack(X_rep.transpose(), feats)
 
     else:
         X_trn = X_rep.transpose()
-        ids = [line.split(',')[0] for line in open(doc4Dict[0])]
+        ids = [line.split(',')[0] for line in open(docs)]
     
     # build label for training
     Y_trn = []
@@ -88,7 +139,13 @@ if __name__ == '__main__':
         Y_trn.append(groundTruth[i])
 
     # train model
-    train_model(X_trn, Y_trn, 'lr')
+    train_model(X_trn, Y_trn, model, outputPath)
+
+
+if __name__ == '__main__':
+    main(*parse_options())
+
+    
 
     
 

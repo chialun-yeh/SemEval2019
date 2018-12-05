@@ -5,7 +5,7 @@ from gensim.utils import SaveLoad
 from gensim.matutils import corpus2csc
 from six import iteritems
 from nltk.corpus import stopwords
-
+import numpy as np
 
 class Bow(object):
     '''
@@ -46,21 +46,20 @@ def computeTFIDF(inputFile, dictionary, file_path):
         model.save(os.path.join(file_path,'tfidf_model'))
 
 def computeDoc2Vec(inputFile, file_path):
-    print('computing doc2vec...')
-    documents = TaggedDoc(inputFile)
-    model = Doc2Vec(documents, vector_size=300, min_count=2, epochs=15)
-    print('saving doc2vec model...')
-    model.save(os.path.join(file_path, 'doc2vec'))
+    if os.path.exists( os.path.join(file_path, 'doc2vec')):
+        return
+    else:
+        print('computing doc2vec...')
+        documents = TaggedDoc(inputFile)
+        model = Doc2Vec(documents, vector_size=300, min_count=2, epochs=10)
+        print('saving doc2vec model...')
+        model.save(os.path.join(file_path, 'doc2vec'))
 
-def buildRep(inputFile, rep='bow', dim=50000, sample=False):
+def buildRep(inputFile, rep='bow', dim=50000):
     '''
     Build document representation model using all documents
     '''
-    if sample:
-        file_path = 'tmp/sample/'
-    else:
-        file_path = 'tmp/'
-
+    file_path = 'tmp/'
     if rep == 'bow' or rep =='tfidf':
         if os.path.exists( os.path.join(file_path, 'dictionary.dict')):
             print('loading bow dictionary...')
@@ -86,22 +85,18 @@ def buildRep(inputFile, rep='bow', dim=50000, sample=False):
         computeDoc2Vec(inputFile, file_path)
 
 
-def extract_doc_rep(docFile, rep='bow', name='', sample=False):
+def extract_doc_rep(docFile, rep='bow'):
     '''
     Extract the representation for file docFile
     '''
-    if sample:
-        file_path = 'tmp/sample/'
-    else:
-        file_path = 'tmp/'
-
+    file_path = 'tmp/'
     if rep =='bow' or rep =='tfidf':
-        if os.path.exists(os.path.join(file_path, name + '.mm')):
-            bow = corpora.MmCorpus(os.path.join(file_path, name + '.mm'))
+        if os.path.exists(file_path + docFile.strip('.txt') + '.mm'):
+            bow = corpora.MmCorpus(file_path + docFile.strip('.txt') + '.mm')
         else:
             dictionary = corpora.Dictionary.load(os.path.join(file_path,'dictionary.dict'))   
             bow = Bow(docFile, dictionary)
-            corpora.MmCorpus.serialize(os.path.join(file_path, name + '.mm'), bow)  
+            corpora.MmCorpus.serialize(file_path + docFile.strip('.txt') + '.mm', bow)  
         if rep == 'bow':
             return corpus2csc(bow, num_terms=50000)
         else:
@@ -110,12 +105,18 @@ def extract_doc_rep(docFile, rep='bow', name='', sample=False):
             return corpus2csc(model[bow], num_terms=50000)
 
     elif rep == 'doc2vec':
+        numDoc = 0
+        for line in open(docFile):
+            numDoc = numDoc + 1
         print('loading doc2vec model...')
         model = Doc2Vec.load(os.path.join(file_path,'doc2vec'))
         # infer vectors
-
-    else:
-        print('invalid representation')
+        vectors = np.zeros((300, numDoc))
+        cnt = 0
+        for line in open(docFile):        
+            vectors[:,cnt] = model.infer_vector(line.split())
+            cnt = cnt+1
+        return vectors
         
 
 

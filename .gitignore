@@ -7,13 +7,14 @@ __pycache__/
 *.so
 
 # data
-*.xml
 *.pdf
 features/*
-models/*
+model/*
 predictions/*
 tmp/*
 exp/*
+data/*
+eval/*
 .pylintrc
 
 # Distribution / packaging

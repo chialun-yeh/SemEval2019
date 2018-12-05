@@ -4,6 +4,7 @@ import xml.sax
 import lxml.sax
 import lxml.etree
 from text_featurizer import *
+import string
 
 def processTitle(title):
     # CNN to process title
