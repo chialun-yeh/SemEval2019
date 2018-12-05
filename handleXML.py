@@ -50,8 +50,7 @@ class HyperpartisanNewsExtractor(xml.sax.ContentHandler):
                 handleArticle(self.lxmlhandler.etree.getroot(), self.outFile)
                 self.lxmlhandler = "undefined"
 
-def createDocuments(inputFile):
-    outputFile = inputFile.strip('.xml') + '.txt'
+def createDocuments(inputFile, outputFile):
     with open(outputFile, 'w') as outFile:
         with open(inputFile, 'r', encoding='utf-8') as inputRunFile:
             parser = xml.sax.make_parser()

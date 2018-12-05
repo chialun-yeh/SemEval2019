@@ -99,12 +99,13 @@ def main(inputFile, labelFile, outputPath, rep, model):
         xml.sax.parse(groundTruthDataFile, GroundTruthHandler())
     
     # build document representation model
-    if not os.path.exists(inputFile.strip('.xml') + '.txt'):
-        createDocuments(inputFile)
+    outFile = 'data/articles-training.txt'
+    if not os.path.exists(outFile):
+        createDocuments(inputFile, outFile)
     else:
         print('loading documents')
         # also create for validation?
-    docs = inputFile.strip('.xml') + '.txt'
+    docs = outFile
     if rep == 'bow' or rep == 'tfidf':
         dim = 50000
     else:
@@ -112,7 +113,7 @@ def main(inputFile, labelFile, outputPath, rep, model):
 
     buildRep(docs, rep, dim)
     # extract doc representation for training set
-    X_rep = extract_doc_rep(docs, rep, name='trn_rep')
+    X_rep = extract_doc_rep(docs, rep)
 
     if use_features:
         feature_path = './features/'

@@ -58,8 +58,8 @@ def parse_options():
 def main(inputFile, outputDir, modelName, rep):
 
     use_features = False
-    if not os.path.exists(inputFile.strip('.xml') + '.txt'):
-        createDocuments(inputFile)
+    if not os.path.exists('data/articles-validation.txt'):
+        createDocuments(inputFile, 'data/articles-validation.txt')
     doc = inputFile.strip('.xml') + '.txt'
 
     # doc representation
