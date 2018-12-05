@@ -9,7 +9,6 @@ __pycache__/
 # data
 *.pdf
 features/*
-model/*
 predictions/*
 tmp/*
 exp/*
