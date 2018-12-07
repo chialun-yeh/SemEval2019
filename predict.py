@@ -5,10 +5,10 @@ import sys
 import getopt
 import pickle
 import xml.sax
+from pathlib import Path
 from myFeaturizer import Featurizer
 from train import parseFeatures
 from scipy.sparse import hstack
-from gensim import corpora
 from doc_representation import extract_doc_rep
 from handleXML import createDocuments
 
@@ -58,15 +58,24 @@ def parse_options():
 def main(inputFile, outputDir, modelName, rep):
 
     use_features = False
-    if not os.path.exists('data/articles-validation.txt'):
-        createDocuments(inputFile, 'data/articles-validation.txt')
-    doc = inputFile.strip('.xml') + '.txt'
+    text_folder = 'text/'
+    text_name = Path(inputFile).name.strip('.xml') + '.txt'
+    if not os.path.exists(text_folder + text_name ):
+        print('creating text document...')
+        createDocuments(inputFile, text_folder + text_name)
+    else:
+        print('loading text document...')
+
+    if rep == 'bow' or rep == 'tfidf':
+        dim = 50000
+    else:
+        dim = 300
 
     # doc representation
-    X_rep = extract_doc_rep(doc, rep)
+    X_rep = extract_doc_rep(text_folder + text_name, rep)
 
     if use_features:
-        feature_path = './features/'
+        feature_path = 'features/'
         # extract features
         with open(os.path.join(feature_path, inputFile.strip('.xml')) + '.txt', 'w') as outFile:
             with open(inputFile, encoding='utf-8') as inputFile:
@@ -81,7 +90,7 @@ def main(inputFile, outputDir, modelName, rep):
         X_val = hstack(X_rep.transpose(), feats)
 
     else:
-        ids = [line.split(',')[0] for line in open(doc)]
+        ids = [line.split(',')[0] for line in open(text_folder + text_name, 'r', encoding='utf8')]
         X_val = X_rep.transpose()
 
     # predict 

@@ -3,12 +3,15 @@ import os
 import getopt
 import pickle
 import xml.sax
+from pathlib import Path
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
+from scipy.sparse import hstack
+
 from myFeaturizer import Featurizer, parseFeatures
 from doc_representation import buildRep, extract_doc_rep
 from handleXML import createDocuments
-from scipy.sparse import hstack
+
 
 
 ########## OPTIONS HANDLING ##########
@@ -79,6 +82,7 @@ class GroundTruthHandler(xml.sax.ContentHandler):
             groundTruth[articleId] = hyperpartisan
 
 def train_model(X, Y, model, outputPath):
+    """Train main model with input features X and label Y."""
     if model == 'lr':
         model = LogisticRegression()
         model_name = 'logisticRegression.sav'
@@ -92,31 +96,33 @@ def train_model(X, Y, model, outputPath):
 
 def main(inputFile, labelFile, outputPath, rep, model):  
     """Main method of this module."""
-
     use_features = False
     # parse groundTruth
     with open(labelFile) as groundTruthDataFile:
         xml.sax.parse(groundTruthDataFile, GroundTruthHandler())
     
     # build document representation model
-    outFile = 'data/articles-training.txt'
-    if not os.path.exists(outFile):
-        createDocuments(inputFile, outFile)
+    text_folder = 'text/'
+    if not os.path.exists(text_folder):
+        os.mkdir(text_folder)
+    text_name = Path(inputFile).name.strip('.xml') + '.txt'
+    if not os.path.exists(text_folder + text_name ):
+        print('creating text document...')
+        createDocuments(inputFile, text_folder + text_name)
     else:
-        print('loading documents')
+        print('loading text document...')
         # also create for validation?
-    docs = outFile
     if rep == 'bow' or rep == 'tfidf':
         dim = 50000
     else:
         dim = 300
 
-    buildRep(docs, rep, dim)
+    buildRep(text_folder, rep, dim)
     # extract doc representation for training set
-    X_rep = extract_doc_rep(docs, rep)
+    X_rep = extract_doc_rep(text_folder + text_name, rep, dim)
 
     if use_features:
-        feature_path = './features/'
+        feature_path = 'features/'
         # extract and write features to ./features/
         with open(os.path.join(feature_path, inputFile.strip('.xml')) + '.txt', 'w') as outFile:
             with open(inputFile, encoding='utf-8') as inputFile:
@@ -132,7 +138,7 @@ def main(inputFile, labelFile, outputPath, rep, model):
 
     else:
         X_trn = X_rep.transpose()
-        ids = [line.split(',')[0] for line in open(docs)]
+        ids = [line.split(',')[0] for line in open(text_folder + text_name, 'r', encoding='utf8')]
     
     # build label for training
     Y_trn = []
