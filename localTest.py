@@ -1,15 +1,13 @@
 import sys
 import os
 import getopt
-import argparse
 import pickle
 import xml.sax
 from pathlib import Path
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import normalize
-from scipy import sparse
-import numpy as np
+from scipy.sparse import hstack
 
 from myFeaturizer import Featurizer, parseFeatures
 from doc_representation import buildRep, extract_doc_rep
@@ -120,9 +118,9 @@ def main(inputFile, labelFile, outputPath):
     '''
 
     stem = False
-    rep = 'doc2vec'
-    dim = 100
-    use_title = False
+    rep = 'bow'
+    dim = 50000
+    use_title = True
     use_features = False
     model = 'lr'
 
@@ -136,12 +134,6 @@ def main(inputFile, labelFile, outputPath):
     if not os.path.exists(text_folder):
         os.mkdir(text_folder)
     text_name = Path(inputFile).name.strip('.xml') + '.txt'
-    if not os.path.exists(text_folder + text_name ):
-        print('creating text document...')
-        createDocuments(inputFile, text_folder + text_name)
-    else:
-        print('loading text document...')
-        # also create for validation?
     if rep == 'bow' or rep == 'tfidf':
         dim = 50000
     else:
@@ -168,10 +160,7 @@ def main(inputFile, labelFile, outputPath):
 
         # parse features
         articleIds, feats = parseFeatures(text_name)
-        if rep == 'doc2vec':
-            X_trn = np.hstack( (X_rep.transpose(), feats))
-        else:
-            X_trn = sparse.hstack( (X_rep.transpose(), feats))
+        X_trn = hstack( (X_rep.transpose()[:407359,:], feats))
 
     else:
         X_trn = X_rep.transpose()
@@ -188,8 +177,8 @@ def main(inputFile, labelFile, outputPath):
 
 
 if __name__ == '__main__':
-    inputFile = 'data/articles-training-bypublisher.xml'
-    labelFile = 'data/ground-truth-training-bypublisher.xml'
-    outputPath = 'model'
-    main(inputFile, labelFile, outputPath)
-    #main(*parse_options())
+    #inputFile = 'data/articles-training-byarticle.xml'
+    #labelFile = 'data/ground-truth-training-byarticle.xml'
+    #outputPath = 'model'
+    #main(inputFile, labelFile, outputPath)
+    main(*parse_options())

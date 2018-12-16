@@ -12,7 +12,6 @@ class GroundTruthHandler(xml.sax.ContentHandler):
 
     def startElement(self, name, attrs):
         if name == "article":
-            articleId = attrs.getValue("id")
             b = attrs.getValue("hyperpartisan")
             if b in binary.keys():
                 binary[b] = binary[b] + 1

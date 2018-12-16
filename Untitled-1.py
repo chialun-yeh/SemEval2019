@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Spyder Editor
+
+This is a temporary script file.
+"""
+
 #!/usr/bin/env python
 
 """Extract text from the xml for easier processing. This would not be necessary if a way to iterate XML is implemented"""
@@ -5,8 +12,15 @@ import re
 import xml.sax
 import lxml.sax
 import lxml.etree
+from urllib.request import urlopen
 
-def cleanText(text):
+
+def handleArticle(article, outFile):
+    ''' Clean the text by replacing weird quotation marks, removing URLs, bracketed text, news-specific phrases, hashtags and spaces.
+        The capitalization and punctuation remain.
+    '''
+    # get text from article
+    text = lxml.etree.tostring(article, method="text", encoding="unicode")
     # clean quotations
     text = re.sub(r'[`‘’‛⸂⸃⸌⸍⸜⸝]', "'", text)
     text = re.sub(r'[„“]|(\'\')|(,,)', '"', text)
@@ -22,15 +36,6 @@ def cleanText(text):
     text = re.sub(r' {2,}', ' ', text)
     # remove newline in the beginning of the file
     text = text.lstrip().replace('\n','')
-    return text
-
-def handleArticle(article, outFile):
-    ''' Clean the text by replacing weird quotation marks, removing URLs, bracketed text, news-specific phrases, hashtags and spaces.
-        The capitalization and punctuation remain.
-    '''
-    # get text from article
-    text = lxml.etree.tostring(article, method="text", encoding="unicode")
-    text = cleanText(text)
     outFile.write(article.get("id") + ',')
     outFile.write(text)
     outFile.write("\n")
@@ -63,16 +68,20 @@ class TextEctractor(xml.sax.ContentHandler):
 
 def createDocuments(inputFile, outputFile):
     with open(outputFile, 'w', encoding='utf-8') as outFile:
-        with open(inputFile, 'r', encoding='utf-8') as inputRunFile:
+        with urlopen(inputFile) as inputRunFile:
             parser = xml.sax.make_parser()
             parser.setContentHandler(TextEctractor(outFile))
             source = xml.sax.xmlreader.InputSource()
             source.setByteStream(inputRunFile)
+            source.setEncoding('utf8')
             parser.parse(source)
 
 
 
 if __name__ == '__main__':
-    inputFile = 'data/articles-validation-bypublisher.xml'
-    outputFile = 'text/articles-validation-bypublisher.txt'
+    inputFile = "https://s3.amazonaws.com/sbd2018/SemEval_data/articles-validation-bypublisher.xml"
+    outputFile = 'text/test.txt'
     createDocuments(inputFile, outputFile)
+
+
+

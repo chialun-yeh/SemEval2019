@@ -30,29 +30,12 @@ def extract_text_features(sentences, words):
     return [word_num, stopwords_count, all_cap_num, char_num, word_len, sent_num, sent_len]
 
 
-
 def switcher(pos):
-    pos_family = {
-    'NN': 'noun',
-    'NNS': 'noun',
-    'NNP': 'noun',
-    'NNPS': 'noun',
-    'VB': 'verb',
-    'VBD': 'verb',
-    'VBG': 'verb',
-    'VBN': 'verb',
-    'VBP': 'verb',
-    'VBZ': 'verb',
-    'JJ': 'adj',
-    'JJR': 'adj',
-    'JJS': 'adj',
-    'PRP': 'pron',
-    'PRP$': 'pron',
-    'WP': 'pron',
-    'WP$': 'pron',
-    'RB': 'adverb',
-    'RBR': 'adverb',
-    'RBS': 'adverb'}
+    pos_family = {'NN': 'noun', 'NNS': 'noun', 'NNP': 'noun', 'NNPS': 'noun',
+    'VB': 'verb', 'VBD': 'verb', 'VBG': 'verb', 'VBN': 'verb', 'VBP': 'verb', 'VBZ': 'verb',
+    'JJ': 'adj', 'JJR': 'adj', 'JJS': 'adj',
+    'PRP': 'pron', 'PRP$': 'pron', 'WP': 'pron', 'WP$': 'pron',
+    'RB': 'adverb', 'RBR': 'adverb', 'RBS': 'adverb'}
 
     if pos in pos_family.keys():
         return pos_family[pos]

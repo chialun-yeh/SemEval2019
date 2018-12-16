@@ -24,8 +24,8 @@ def parse_options():
 
     inputFile = "undefined"
     outputDir = "undefined"
-    modelName = "undefined"
-    documentRep = 'bow'
+    modelName = "tfidf_lr.sav"
+    documentRep = 'tfidf'
 
     for opt, arg in opts:
         if opt in ("-i", "--inputFile"):
@@ -95,7 +95,7 @@ def main(inputFile, outputDir, modelName, rep):
 
     # predict 
     print('predicting values...')
-    model = pickle.load(open(modelName, 'rb'))
+    model = pickle.load(open('model/'+ modelName, 'rb'))
     preds = model.predict(X_val)
 
     # write output
