@@ -66,7 +66,7 @@ def main(inputFile, labelFile, outputPath):
     '''
 
     stem = True
-    rep = 'tfidf'
+    rep = 'bow'
     dim = 50000
     use_title = False
     use_features = False

@@ -31,11 +31,11 @@ from handleXML import cleanText, cleanQuotations
 # global parameters
 runOutputFileName = "prediction.txt"
 stem = True
-rep = 'tfidf'
+rep = 'bow'
 dim = 50000
 use_title = False
 use_features = False
-model = pickle.load(open('model/tfidf_stem_lr.sav', 'rb'))
+model = pickle.load(open('model/bow_stem_lr.sav', 'rb'))
 
 rep_file = 'tmp/'
 if rep == 'bow' or rep =='tfidf':

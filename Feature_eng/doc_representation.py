@@ -8,6 +8,10 @@ from gensim.matutils import corpus2csc
 from gensim.parsing.preprocessing import stem_text, remove_stopwords, strip_multiple_whitespaces
 from gensim.parsing.preprocessing import preprocess_string, strip_non_alphanum, strip_numeric, strip_short
 
+from nltk.corpus import wordnet, stopwords
+from nltk.stem import WordNetLemmatizer 
+import string
+import nltk
 
 class Bow(object):
     '''
@@ -42,8 +46,28 @@ class TaggedDoc(object):
                 text = line.split('::')[1] + ' ' + line.split('::')[2]
                 yield TaggedDocument(simple_preprocess(text), [docId])
 
+def get_wordnet_pos(word):
+    """Map POS tag to first character lemmatize() accepts"""
+    tag = nltk.pos_tag([word])[0][1][0].upper()
+    tag_dict = {"J": wordnet.ADJ,
+                "N": wordnet.NOUN,
+                "V": wordnet.VERB,
+                "R": wordnet.ADV}
+
+    return tag_dict.get(tag, wordnet.NOUN)
+
+def lemmatizeText(text):
+    # Init Lemmatizer
+    lemmatizer = WordNetLemmatizer()
+    return ' '.join([lemmatizer.lemmatize(w, get_wordnet_pos(w)) for w in nltk.word_tokenize(text) if w not in string.punctuation])
+
 def buildName(stem, model_name):
-    return model_name + '_stem' if stem else model_name + 'no_stem'
+    if stem == 1:
+        return model_name + '_stem'
+    elif stem == 2:
+        return model_name + '_lemmatize'
+    else:
+        return model_name
 
 def computeTFIDF(inputFileList, dictionary, file_path, stem):
     '''Build tfidf model'''
@@ -52,7 +76,7 @@ def computeTFIDF(inputFileList, dictionary, file_path, stem):
     else:
         print('computing TFIDF...')
         bow = Bow(inputFileList, dictionary, stem)
-        model = models.TfidfModel(bow)
+        model = models.TfidfModel(bow, dictionary)
         print('saving tfidf model...')
         model.save(file_path + buildName(stem, 'tfidf_model'))
 
@@ -72,8 +96,15 @@ def preprocess(text, stem):
     '''
     return a list of tokenized words filtered by filters
     '''
-    filters = [remove_stopwords, strip_non_alphanum, strip_multiple_whitespaces, strip_numeric, strip_short]
-    return preprocess_string(stem_text(text), filters) if stem else preprocess_string(text, filters)
+    #filters = [lambda x: x.lower(), remove_stopwords, strip_non_alphanum, strip_multiple_whitespaces, strip_numeric, strip_short]
+    # return simple_preprocess(lemmatizeText(text), True) if stem else simple_preprocess(text, True)
+    if stem == 1:
+        return simple_preprocess(stem_text(text), True)
+    elif stem == 2:
+        return simple_preprocess(lemmatizeText(text), True)
+    else:
+        return simple_preprocess(text, True)
+    
 
 def buildRep(inputFileFolder, rep='bow', dim=50000, stem=False):
     '''
@@ -84,7 +115,7 @@ def buildRep(inputFileFolder, rep='bow', dim=50000, stem=False):
     dim: dimension of the representation
     '''
     file_path = 'tmp/'
-    fileList = [inputFileFolder + f for f in os.listdir(inputFileFolder) if f.startswith('articles') and f.endswith(".txt")]
+    fileList = [inputFileFolder + f for f in os.listdir(inputFileFolder) if f.startswith('articles') and f.endswith("bypublisher.txt")]
 
     if rep == 'bow' or rep =='tfidf':
         if os.path.exists( file_path + buildName(stem, 'dictionary') + '.dict'):
@@ -99,7 +130,8 @@ def buildRep(inputFileFolder, rep='bow', dim=50000, stem=False):
                 for line in open (f, encoding='utf8') )                     
             
             # filter terms that occur in less than 10 documents or more than 50% of the documents and keeps only the first dim frequent words
-            dct.filter_extremes(no_below=10, no_above=0.5, keep_n=dim)
+            dct.filter_extremes(no_below=5, no_above=0.5)
+            #dct.filter_extremes(no_below=10, no_above=0.5, keep_n=dim)
             dct.compactify()
             
             # save dictionary
@@ -151,7 +183,6 @@ def extract_doc_rep(textFile, rep='bow', dim=50000, stem=False):
         
 
 
-
-
-
+if __name__ == "__main__":
+     buildRep('../data/', rep='bow', dim=50000, stem=2)
 
