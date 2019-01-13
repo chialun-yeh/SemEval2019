@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
+from pathlib import Path
 
 from src.utils import get_max_lengths, get_evaluation
 from src.dataset import MyDataset
@@ -19,11 +20,11 @@ def get_args():
     parser = argparse.ArgumentParser(
         """Implementation of the model described in the paper: Hierarchical Attention Networks for Document Classification""")
     parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--num_epoches", type=int, default=200)
+    parser.add_argument("--num_epoches", type=int, default=50)
     parser.add_argument("--lr", type=float, default=0.1)
     parser.add_argument("--momentum", type=float, default=0.9)
-    parser.add_argument("--word_hidden_size", type=int, default=50)
-    parser.add_argument("--sent_hidden_size", type=int, default=50)
+    parser.add_argument("--word_hidden_size", type=int, default=10)
+    parser.add_argument("--sent_hidden_size", type=int, default=10)
     parser.add_argument("--es_min_delta", type=float, default=0.001,
                         help="Early stopping's parameter: minimum change loss to qualify as an improvement")
     parser.add_argument("--es_patience", type=int, default=10,
@@ -37,15 +38,22 @@ def get_args():
     parser.add_argument("--log_path", type=str, default="tensorboard/")
     parser.add_argument("--saved_path", type=str, default="trained_model")
     parser.add_argument("--model_name", type=str, default="han_model")
+
+    parser.add_argument("--num_samples", type=int, default=50)
+    parser.add_argument("--sent_max_length", type=int, default=20)
+    parser.add_argument("--doc_max_length", type=int, default=20)
     args = parser.parse_args()
     return args
 
-
 def train(opt):
+    # use only num_samples of sample for training, and contraint sentence and document lengths
+    speedup = True
+
     if torch.cuda.is_available():
         torch.cuda.manual_seed(123)
     else:
         torch.manual_seed(123)
+
     if not os.path.exists(opt.saved_path):
         os.makedirs(opt.saved_path)
     output_file = open(opt.saved_path + os.sep + "logs.txt", "w")
@@ -57,21 +65,30 @@ def train(opt):
                    "shuffle": False,
                    "drop_last": False}
 
-    max_word_length, max_sent_length = get_max_lengths(opt.train_set)
-    training_set = MyDataset(opt.train_set, opt.word2vec_path, opt.train_label, max_sent_length, max_word_length)
+    if speedup:
+        max_word_length, max_sent_length, samples = opt.sent_max_length, opt.doc_max_length, opt.num_samples
+    else:
+        # compute max lengths from data
+        max_word_length, max_sent_length = get_max_lengths(opt.train_set)
+        samples = 1000000
+    
+    training_set = MyDataset(opt.train_set, opt.word2vec_path, opt.train_label, max_word_length, max_sent_length, samples)
     training_generator = DataLoader(training_set, **training_params)
-
-    test_set = MyDataset(opt.test_set, opt.word2vec_path, opt.test_label, max_sent_length, max_word_length)
+        
+    test_set = MyDataset(opt.test_set, opt.word2vec_path, opt.test_label, max_word_length, max_sent_length)
     test_generator = DataLoader(test_set, **test_params)
-
+        
     model = HierAttNet(opt.word_hidden_size, opt.sent_hidden_size, opt.batch_size, training_set.num_classes,
                        opt.word2vec_path, max_sent_length, max_word_length)
 
+    
+    tensorboardName = '_'.join(['b', str(opt.batch_size), 's', str(max_word_length), \
+    'd', str(max_sent_length), Path(opt.word2vec_path).name.strip('.txt')])
 
-    if os.path.isdir(opt.log_path):
-        shutil.rmtree(opt.log_path)
-    os.makedirs(opt.log_path)
-    writer = SummaryWriter(opt.log_path)
+    if os.path.isdir(opt.log_path + tensorboardName):
+        shutil.rmtree(opt.log_path + tensorboardName)
+    os.makedirs(opt.log_path + tensorboardName)
+    writer = SummaryWriter(opt.log_path + tensorboardName)
     # writer.add_graph(model, torch.zeros(opt.batch_size, max_sent_length, max_word_length))
 
     if torch.cuda.is_available():
@@ -95,7 +112,7 @@ def train(opt):
             loss.backward()
             optimizer.step()
             training_metrics = get_evaluation(label.cpu().numpy(), predictions.cpu().detach().numpy(), list_metrics=["accuracy"])
-            if (iter+1) % 50 == 0:
+            if (iter+1) % 100 == 0:
                 print("Epoch: {}/{}, Iteration: {}/{}, Lr: {}, Loss: {}, Accuracy: {}".format(
                 epoch + 1, opt.num_epoches, iter + 1, num_iter_per_epoch,
                 optimizer.param_groups[0]['lr'], loss, training_metrics["accuracy"]))

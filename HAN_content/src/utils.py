@@ -50,7 +50,7 @@ def get_max_lengths(data_path):
         for line in file:
             title = line.split('::')[1]
             text = line.split('::')[2]
-            sent_list = sent_tokenize(title + text)
+            sent_list = sent_tokenize(title + ' ' + text)
             sent_length_list.append(len(sent_list))
             for sent in sent_list:
                 word_list = word_tokenize(sent)

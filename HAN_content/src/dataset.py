@@ -26,7 +26,7 @@ class GroundTruthHandler(xml.sax.ContentHandler):
             groundTruth[articleId] = hyperpartisan
 
 class MyDataset(Dataset):
-    def __init__(self, data_path, dict_path, label_path, max_length_sentences=30, max_length_word=35):
+    def __init__(self, data_path, dict_path, label_path, max_length_sentences=30, max_length_word=35, sample_data = 1000000):
         super(MyDataset, self).__init__()
 
         if label_path is not '':
@@ -35,19 +35,20 @@ class MyDataset(Dataset):
 
         articleIds, texts, labels = [], [], []
         with open(data_path, encoding = 'utf8') as file:
-            for line in file:
-                articleId = line.split('::')[0]
-                title = line.split('::')[1]
-                text = line.split('::')[2]
-                texts.append(title + text)
-                if label_path is not '':
-                    if groundTruth[articleId] == 'true':
-                        labels.append(int(1))
+            for line_count, line in enumerate(file):
+                if line_count < sample_data:
+                    articleId = line.split('::')[0]
+                    title = line.split('::')[1]
+                    text = line.split('::')[2]
+                    texts.append(title + ' ' + text)
+                    if label_path is not '':
+                        if groundTruth[articleId] == 'true':
+                            labels.append(int(1))
+                        else:
+                            labels.append(int(0))
                     else:
                         labels.append(int(0))
-                else:
-                    labels.append(int(0))
-                articleIds.append(articleId)
+                    articleIds.append(articleId)
 
         self.articleIds = articleIds
         self.texts = texts
@@ -70,6 +71,9 @@ class MyDataset(Dataset):
             [self.dict.index(word) if word in self.dict else -1 for word in word_tokenize(sentences)] \
             for sentences in sent_tokenize(text)]
 
+        # maybe not put -1 for unknown words?
+        #document_encode = [[self.dict.index(word) if word in self.dict for word in word_tokenize(sentences)] for sentences in sent_tokenize(text)]
+
         for sentences in document_encode:
             if len(sentences) < self.max_length_word:
                 extended_words = [-1 for _ in range(self.max_length_word - len(sentences))]
@@ -87,5 +91,7 @@ class MyDataset(Dataset):
         return articleId, document_encode.astype(np.int64), label
 
 if __name__ == '__main__':
-    test = MyDataset("../data/articles-training-byarticle.txt", "../pre-trained/glove.6B.100d.txt", '')
-    print (test.__getitem__(index=1)[0].shape)
+    articleFile = '../data/articles-training-byarticle.txt'
+    labelFile = '../data/ground-truth-training-byarticle.xml'
+    test = MyDataset(articleFile, "../data/glove.6B.100d.txt", labelFile, sample_data=100, max_length_sentences=20, max_length_word=20)
+    print (test.__getitem__(index=0)[1])
