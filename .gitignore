@@ -8,14 +8,6 @@ __pycache__/
 
 # data
 *.pdf
-Feature_Eng/features/
-Feature_Eng/tmp/
-Feature_Eng/exp/
-Feature_Eng/result/
-Feature_Eng/model/
-HAN_content/tensorboard
-HAN_content/trained_model
-CNN_title/saved_models
 data/*
 .pylintrc
 

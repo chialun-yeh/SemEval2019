@@ -2,13 +2,14 @@ import re
 import pandas as pd
 import numpy as np
 import string
+import xml
 from lxml import etree
 import nltk
 from nltk.corpus import stopwords
 import html
 from sklearn.model_selection import StratifiedShuffleSplit
 
-'''Contains some text cleaning functions'''
+'''Helper functions for data reading and cleaning'''
 
 def cleanQuotations(text):
     # clean quotations
@@ -41,14 +42,12 @@ def fixup(text):
     .replace('<unk>','u_n').replace(' @.@ ','.').replace(' @-@ ','-').replace('\\', ' \\ ')
     return html.unescape(text)
 
-def read_glove(path, dim):
-    '''
-    read the glove vectors
-    dim: 100, 200, 300
-    '''
-    df = pd.read_csv(path + 'glove.6B.' + str(dim) + 'd.txt', sep=" ", quoting=3, header=None, index_col=0)
-    glove = {key: val.values for key, val in df.T.items()}
-    return glove
+def textCleaning(title, text):
+    title = cleanQuotations(title)
+    text = cleanQuotations(text)
+    text = cleanText(fixup(text))
+    return title + ". " + text
+
 
 def customTokenize(text, rm_stopwords=False):
     '''
@@ -69,3 +68,15 @@ def fixedTestSplit(labels):
     sss = StratifiedShuffleSplit(n_splits=1, test_size=0.5, random_state = 1)
     split_idx = list(sss.split(np.zeros(len(labels)), labels))[0]
     return split_idx[0], split_idx[1]
+
+class GroundTruthHandler(xml.sax.ContentHandler):
+    '''
+    class for reading labels
+    '''
+    def __init__(self, gt):
+        xml.sax.ContentHandler.__init__(self)
+        self.gt = gt
+
+    def startElement(self, name, attrs):
+        if name == "article":
+            self.gt.append(attrs.getValue("hyperpartisan"))
